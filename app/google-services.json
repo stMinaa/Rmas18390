@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "531509285926",
+    "project_id": "vintageshopper-b5283",
+    "storage_bucket": "vintageshopper-b5283.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:531509285926:android:898d47d6d03b37c9d642e7",
+        "android_client_info": {
+          "package_name": "com.example.proba"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAL8aOvz3xV2Tl3jRYt8vLYenNqyXgsIyU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:531509285926:android:616464cc2a5d1ed0d642e7",
+        "android_client_info": {
+          "package_name": "com.example.vintageshopper"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAL8aOvz3xV2Tl3jRYt8vLYenNqyXgsIyU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
