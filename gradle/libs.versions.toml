@@ -16,6 +16,7 @@ firebaseAuth = "23.0.0"
 transportationConsumer = "2.3.0"
 constraintlayout = "2.2.0"
 firebaseStorageKtx = "21.0.1"
+firebaseCrashlyticsBuildtools = "3.0.2"
 
 [libraries]
 androidx-constraintlayout-compose = { module = "androidx.constraintlayout:constraintlayout-compose", version.ref = "constraintlayoutCompose" }
@@ -39,6 +40,7 @@ firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version
 transportation-consumer = { group = "com.google.android.libraries.mapsplatform.transportation", name = "transportation-consumer", version.ref = "transportationConsumer" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 firebase-storage-ktx = { group = "com.google.firebase", name = "firebase-storage-ktx", version.ref = "firebaseStorageKtx" }
+firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
