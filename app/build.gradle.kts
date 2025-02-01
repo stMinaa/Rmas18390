@@ -80,4 +80,15 @@ dependencies {
     //constraint
     implementation(libs.androidx.constraintlayout.compose)
 
+    implementation(libs.material3)
+    implementation(libs.androidx.navigation.compose.v275)
+
+
+    // Google Maps Compose
+    implementation(libs.maps.compose)
+    implementation(libs.play.services.maps)
+    implementation(libs.play.services.location)
+
+    // Accompanist Permissions
+    implementation(libs.accompanist.permissions)
 }
