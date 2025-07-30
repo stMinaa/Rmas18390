@@ -28,29 +28,32 @@ fun MyNavigation(navHostController: NavHostController) {
     NavHost(
         navController = navHostController,
         startDestination = "login_flow",
-    )
-    {
-        navigation(startDestination = Route.LoginScreen().name, route = "login_flow") {
-            composable(route = Route.LoginScreen().name) {
+    ) {
+        navigation(
+            startDestination = Route.LoginScreen().name,
+            route = "login_flow"
+        ) {
+            composable(Route.LoginScreen().name) {
                 LoginScreen(navController = navHostController)
-
             }
-
-            composable(route = Route.SignUpScreen().name) {
+            composable(Route.SignUpScreen().name) {
                 SignupScreen(navController = navHostController)
             }
+            composable(Route.UploadProfilePictureScreen().name) {
+                UploadProfilePictureScreen(navController = navHostController)
+            }
         }
-        composable(route=Route.HomeScreen().name){
+
+        composable(Route.HomeScreen().name) {
             HomeScreen(navController = navHostController)
         }
-        composable(route = Route.ProfilePage().name) {
+
+        composable(Route.ProfilePage().name) {
             ProfilePage(navController = navHostController)
-        }
-        composable(route = Route.UploadProfilePictureScreen().name) {
-            UploadProfilePictureScreen(navController = navHostController)
         }
     }
 }
+
 
 fun NavController.navigateToSingleTop(route: String) {
     navigate(route) {

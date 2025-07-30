@@ -113,21 +113,26 @@ fun LoginScreen(navController: NavController) {
                     .addOnCompleteListener { task ->
                         if (task.isSuccessful) {
                             Toast.makeText(context, "Login successful", Toast.LENGTH_SHORT).show()
-                            // Navigacija ka HomeScreen i uklanjanje LoginScreen iz stack-a
                             navController.navigate(Route.HomeScreen().name) {
+                                // briše ceo login/signup flow iz backstack-a
                                 popUpTo("login_flow") { inclusive = true }
+                                launchSingleTop = true
                             }
                         } else {
-                            Toast.makeText(context, "Login failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                "Login failed: ${task.exception?.message}",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }
             },
             modifier = Modifier.fillMaxWidth(),
             enabled = isFieldsEmpty,
-
         ) {
             Text("Login")
         }
+
 
         Row(
             horizontalArrangement = Arrangement.Center,

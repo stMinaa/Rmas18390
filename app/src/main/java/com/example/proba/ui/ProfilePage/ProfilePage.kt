@@ -30,6 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.navigation.NavController
+import coil.compose.rememberAsyncImagePainter
 import com.example.proba.R
 import com.example.proba.ui.login.LoginScreen
 import com.example.proba.ui.theme.ProbaTheme
@@ -98,15 +99,22 @@ fun ProfilePage(navController: NavController) {
                 contentScale = ContentScale.Crop)
 
             // Profilna slika
+            val imageUrl = userData?.get("profilePhotoUrl") as? String
+            val profilePainter = if (!imageUrl.isNullOrEmpty()) {
+                rememberAsyncImagePainter(imageUrl)
+            } else {
+                painterResource(id = R.drawable.ic_boy)
+            }
+
             Image(
-                painter = painterResource(id = R.drawable.ic_boy),
+                painter = profilePainter,
                 contentDescription = "Profile Picture",
                 modifier = Modifier
                     .size(120.dp)
                     .clip(CircleShape)
                     .background(Color.Gray)
                     .constrainAs(profile) {
-                        bottom.linkTo(topImg.bottom, margin = -60.dp) // Pada na donju trećinu
+                        bottom.linkTo(topImg.bottom, margin = -60.dp)
                         start.linkTo(parent.start)
                         end.linkTo(parent.end)
                     },

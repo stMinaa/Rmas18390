@@ -1,3 +1,7 @@
+import java.io.FileInputStream
+import java.util.Properties
+
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
@@ -16,6 +20,20 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+
+        val properties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            properties.load(FileInputStream(localPropertiesFile))
+        }
+
+        val mapsApiKey = properties.getProperty("MAPS_API_KEY")
+
+        // Dodavanje API ključa u BuildConfig
+        buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
+
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey ?: ""
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
@@ -30,6 +48,9 @@ android {
                 "proguard-rules.pro"
             )
         }
+    }
+    buildFeatures {
+        buildConfig = true // Omogućava BuildConfig polja
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
@@ -75,6 +96,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(libs.firebase.firestore.ktx)
     implementation(libs.firebase.storage.ktx)
+
     //navigation
     implementation(libs.androidx.navigation.compose)
     //constraint
@@ -88,7 +110,11 @@ dependencies {
     implementation(libs.maps.compose)
     implementation(libs.play.services.maps)
     implementation(libs.play.services.location)
+    implementation(libs.accompanist.permissions.v0340)
 
     // Accompanist Permissions
     implementation(libs.accompanist.permissions)
+
+    //kamera
+    implementation(libs.coil.compose)
 }

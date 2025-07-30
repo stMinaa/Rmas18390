@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Proba</string>
+    <string name="google_maps_key">@string/google_maps_key</string>
+
 </resources>

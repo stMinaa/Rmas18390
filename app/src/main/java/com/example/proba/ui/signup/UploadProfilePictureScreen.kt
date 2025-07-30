@@ -1,42 +1,66 @@
 package com.example.proba.ui.signup
 
 import android.Manifest
-import android.content.pm.PackageManager
+import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
-import android.util.Log
+import android.os.Build
+import android.provider.OpenableColumns
 import android.widget.Toast
-import androidx.compose.foundation.layout.Arrangement
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.launch
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
+import coil.compose.rememberAsyncImagePainter
 import com.example.proba.R
 import com.example.proba.Route
-import com.example.proba.ui.theme.ProbaTheme
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.util.*
-
 
 @Composable
 fun UploadProfilePictureScreen(navController: NavController) {
-    Spacer(modifier = Modifier.height(60.dp))
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+    var cameraImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    val context = LocalContext.current
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        imageUri = uri
+        cameraImageBitmap = null
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap: Bitmap? ->
+        cameraImageBitmap = bitmap
+        imageUri = null
+    }
 
     Column(
         modifier = Modifier
@@ -48,65 +72,240 @@ fun UploadProfilePictureScreen(navController: NavController) {
         Text(
             text = "Upload Profile Picture",
             style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        // Always show the buttons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
         ) {
-            // Upload from device button
+            if (cameraImageBitmap != null) {
+                Image(
+                    bitmap = cameraImageBitmap!!.asImageBitmap(),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, Color.White, CircleShape)
+                )
+            } else {
+                val painter: Painter = if (imageUri != null) {
+                    rememberAsyncImagePainter(imageUri)
+                } else {
+                    painterResource(id = R.drawable.ic_placeholder)
+                }
+                Image(
+                    painter = painter,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, Color.White, CircleShape)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             CircleButton(
                 icon = painterResource(id = R.drawable.ic_folder),
                 description = "Upload from device",
-                onClick = {  }
+                onClick = {
+                    photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }
             )
 
             Spacer(modifier = Modifier.width(32.dp))
 
-            // Take a photo (trigger camera permission check only on click)
             CircleButton(
                 icon = painterResource(id = R.drawable.ic_camera),
                 description = "Take a photo",
-                onClick = {}
-            )
-        }
-
-        // Labels under the buttons
-        Row(
-            modifier = Modifier.fillMaxWidth()
-                .padding(start=15.dp),
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "Upload",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-
-            Spacer(modifier = Modifier.width(56.dp))
-
-            Text(
-                text = "Take a photo",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onBackground,
-                modifier = Modifier.padding(top = 8.dp)
+                onClick = {
+                    cameraLauncher.launch()
+                }
             )
         }
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Skip button
+        Button(
+            onClick = {
+                when {
+                    cameraImageBitmap != null -> {
+                        uploadBitmapToFirebase(cameraImageBitmap!!, context) { downloadUrl ->
+                            updateUserPhotoUrl(downloadUrl, context) {
+                                navController.navigate(Route.HomeScreen().name) {
+                                    popUpTo("login_flow") { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                        }
+                    }
+
+                    imageUri != null -> {
+                        uploadImageToFirebase(imageUri!!, context) { downloadUrl ->
+                            updateUserPhotoUrl(downloadUrl, context) {
+                                navController.navigate(Route.HomeScreen().name) {
+                                    popUpTo("login_flow") { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                        }
+                    }
+
+                    else -> {
+                        Toast.makeText(
+                            context,
+                            "Molimo izaberite ili uslikajte sliku",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            },
+            shape = RoundedCornerShape(50),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+        ) {
+            Text(
+                text = "Postavi sliku",
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.White
+            )
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
         TextButton(onClick = {
             navController.navigate(Route.HomeScreen().name) {
-                popUpTo("upload_profile_picture") { inclusive = true }
+                popUpTo("login_flow") { inclusive = true }
+                launchSingleTop = true
             }
         }) {
-            Text("Skip for now")
+            Text("Preskoči za sada")
         }
+    }
+}
+
+fun uploadImageToFirebase(uri: Uri, context: Context, onComplete: (Uri?) -> Unit) {
+    val storage = FirebaseStorage.getInstance()
+    val fileName = generateUniqueFileName(context, uri)
+    val imageRef = storage.reference.child("images/$fileName")
+
+    val tempUri = copyUriToTempFile(context, uri)
+    if (tempUri == null) {
+        Toast.makeText(context, "Greška pri pripremi fajla", Toast.LENGTH_LONG).show()
+        onComplete(null)
+        return
+    }
+
+    imageRef.putFile(tempUri)
+        .addOnSuccessListener {
+            imageRef.downloadUrl.addOnSuccessListener { uri ->
+                onComplete(uri)
+            }.addOnFailureListener {
+                onComplete(null)
+            }
+        }
+        .addOnFailureListener {
+            it.printStackTrace()
+            onComplete(null)
+        }
+}
+
+fun uploadBitmapToFirebase(bitmap: Bitmap, context: Context, onComplete: (Uri?) -> Unit) {
+    val fileName = "camera_${System.currentTimeMillis()}.jpg"
+    val imageRef = FirebaseStorage.getInstance().reference.child("images/$fileName")
+
+    val tempFile = File.createTempFile("upload_camera", ".jpg", context.cacheDir)
+    try {
+        val outputStream = FileOutputStream(tempFile)
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+        outputStream.flush()
+        outputStream.close()
+    } catch (e: IOException) {
+        e.printStackTrace()
+        Toast.makeText(context, "Greška pri pripremi slike iz kamere", Toast.LENGTH_LONG).show()
+        onComplete(null)
+        return
+    }
+
+    val tempUri = Uri.fromFile(tempFile)
+    imageRef.putFile(tempUri)
+        .addOnSuccessListener {
+            imageRef.downloadUrl.addOnSuccessListener { uri ->
+                onComplete(uri)
+            }.addOnFailureListener {
+                onComplete(null)
+            }
+        }
+        .addOnFailureListener {
+            it.printStackTrace()
+            onComplete(null)
+        }
+}
+
+fun updateUserPhotoUrl(photoUrl: Uri?, context: Context, onSuccess: () -> Unit) {
+    val uid = FirebaseAuth.getInstance().currentUser?.uid
+    if (uid != null && photoUrl != null) {
+        FirebaseFirestore.getInstance().collection("users")
+            .document(uid)
+            .update("profilePhotoUrl", photoUrl.toString())
+            .addOnSuccessListener {
+                Toast.makeText(context, "Profilna slika sačuvana!", Toast.LENGTH_SHORT).show()
+                onSuccess()
+            }
+            .addOnFailureListener {
+                Toast.makeText(context, "Greška pri čuvanju URL-a slike", Toast.LENGTH_LONG).show()
+            }
+    } else {
+        Toast.makeText(context, "Korisnik nije pronađen ili URL je null", Toast.LENGTH_LONG).show()
+    }
+}
+
+fun generateUniqueFileName(context: Context, uri: Uri): String {
+    var name = UUID.randomUUID().toString()
+    val cursor = context.contentResolver.query(uri, null, null, null, null)
+    cursor?.use {
+        if (it.moveToFirst()) {
+            val nameIndex = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (nameIndex != -1) {
+                val originalName = it.getString(nameIndex)
+                if (!originalName.isNullOrEmpty()) {
+                    name = "${System.currentTimeMillis()}_$originalName"
+                }
+            }
+        }
+    }
+    return name
+}
+
+fun copyUriToTempFile(context: Context, uri: Uri): Uri? {
+    return try {
+        val inputStream = context.contentResolver.openInputStream(uri) ?: return null
+        val tempFile = File.createTempFile("upload", ".jpg", context.cacheDir)
+        val outputStream = FileOutputStream(tempFile)
+
+        inputStream.use { input ->
+            outputStream.use { output ->
+                input.copyTo(output)
+            }
+        }
+
+        Uri.fromFile(tempFile)
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
     }
 }
 
@@ -126,14 +325,3 @@ fun CircleButton(icon: Painter, description: String, onClick: () -> Unit) {
         )
     }
 }
-
-
-
-@Preview(showSystemUi = true)
-@Composable
-fun PreviewUploadProfilePictureScreen() {
-    ProbaTheme {
-        UploadProfilePictureScreen(navController = NavController(LocalContext.current))
-    }
-}
-

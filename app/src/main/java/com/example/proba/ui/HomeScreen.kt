@@ -2,8 +2,6 @@ package com.example.proba.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.pm.PackageManager
-import android.location.Location
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
@@ -13,16 +11,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
 import androidx.navigation.NavController
+import com.example.proba.ui.components.LocationTracker
 import com.google.accompanist.permissions.*
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
@@ -32,7 +28,6 @@ fun HomeScreen(navController: NavController) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    // Koristimo više dozvola odjednom (FINE i COARSE LOCATION)
     val locationPermissionState = rememberMultiplePermissionsState(
         listOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -40,34 +35,19 @@ fun HomeScreen(navController: NavController) {
         )
     )
 
-    val context = LocalContext.current
-    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
-
-    var userLocation by remember { mutableStateOf(LatLng(44.7866, 20.4489)) } // Default: Beograd
-    var cameraPositionState = rememberCameraPositionState {
+    var userLocation by remember { mutableStateOf(LatLng(44.8176, 20.4569)) } // default Beograd
+    val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(userLocation, 15f)
     }
 
-    // Tražimo dozvolu i dobijamo trenutnu lokaciju
-    LaunchedEffect(locationPermissionState.allPermissionsGranted) {
-        if (locationPermissionState.allPermissionsGranted) {
-            fusedLocationClient.getCurrentLocation(100, null).addOnSuccessListener { location: Location? ->
-                location?.let {
-                    userLocation = LatLng(it.latitude, it.longitude)
-                    cameraPositionState.move(CameraUpdateFactory.newLatLngZoom(userLocation, 15f))
-                }
-            }
-        }
-    }
-
-    val uiSettings = remember { MapUiSettings(zoomControlsEnabled = false) }
-    val properties = remember { MapProperties(isMyLocationEnabled = locationPermissionState.allPermissionsGranted) }
+    // Dohvati trenutno ulogovanog korisnika (može biti null)
+    val userId = FirebaseAuth.getInstance().currentUser?.uid
 
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
-                modifier = Modifier.fillMaxWidth(0.5f), // Drawer zauzima pola ekrana
+                modifier = Modifier.fillMaxWidth(0.5f),
                 drawerContentColor = MaterialTheme.colorScheme.background
             ) {
                 Text(
@@ -76,7 +56,6 @@ fun HomeScreen(navController: NavController) {
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Filled.Person, contentDescription = "Profil") },
                     label = { Text("Profil", color = MaterialTheme.colorScheme.onBackground) },
@@ -89,7 +68,7 @@ fun HomeScreen(navController: NavController) {
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text("Mapa i Kupovina", color = Color.White) },
+                    title = { Text("Mapa i Lokacija", color = Color.White) },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
                             Icon(Icons.Default.Menu, contentDescription = "Meni", tint = MaterialTheme.colorScheme.onBackground)
@@ -104,26 +83,37 @@ fun HomeScreen(navController: NavController) {
             Box(Modifier.fillMaxSize().padding(paddingValues)) {
                 GoogleMap(
                     modifier = Modifier.fillMaxSize(),
-                    properties = properties,
-                    uiSettings = uiSettings,
                     cameraPositionState = cameraPositionState
                 ) {
                     Marker(
                         state = MarkerState(position = userLocation),
-                        title = "Trenutna lokacija"
+                        title = "Tvoja lokacija"
                     )
                 }
 
-                // Ako dozvola NIJE odobrena, prikazujemo dugme da je tražimo
                 if (!locationPermissionState.allPermissionsGranted) {
                     Button(
                         onClick = { locationPermissionState.launchMultiplePermissionRequest() },
-                        modifier = Modifier.align(Alignment.CenterEnd)
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(16.dp)
                     ) {
-                        Text("Dozvoli pristup lokaciji")
+                        Text("Dozvoli lokaciju")
                     }
                 }
             }
         }
+    }
+
+    // Ako imamo userId i dozvole, pratimo lokaciju i čuvamo u bazu
+    if (userId != null && locationPermissionState.allPermissionsGranted) {
+        LocationTracker(
+            userId = userId,
+            locationPermissionState = locationPermissionState,
+            onLocationUpdate = { newLocation ->
+                userLocation = newLocation
+                cameraPositionState.position = CameraPosition.fromLatLngZoom(newLocation, 15f)
+            }
+        )
     }
 }

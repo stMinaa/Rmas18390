@@ -133,14 +133,18 @@ fun SignupScreen(navController: NavController){
                                     "lastName" to lastName,
                                     "email" to email,
                                     "phone" to phone,
+                                    "profilePhotoUrl" to "",
                                     "signupDate" to com.google.firebase.firestore.FieldValue.serverTimestamp()
                                 )
-                                FirebaseFirestore.getInstance().collection("users").document(userId)
+                                FirebaseFirestore.getInstance()
+                                    .collection("users")
+                                    .document(userId)
                                     .set(userMap)
                                     .addOnSuccessListener {
                                         Toast.makeText(context, "Account created successfully", Toast.LENGTH_SHORT).show()
                                         navController.navigate(Route.UploadProfilePictureScreen().name) {
                                             popUpTo("login_flow") { inclusive = true }
+                                            launchSingleTop = true
                                         }
                                     }
                                     .addOnFailureListener {
@@ -153,7 +157,7 @@ fun SignupScreen(navController: NavController){
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled =  isFieldsNotEmpty
+            enabled = isFieldsNotEmpty
         ) {
             Text("Sign Up")
         }
@@ -162,12 +166,15 @@ fun SignupScreen(navController: NavController){
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Already have an Account?",color = Color.White)
+            Text("Already have an Account?", color = Color.White)
             Spacer(Modifier.height(itemSpacing))
-            TextButton(onClick = {navController.navigateToSingleTop("Login")}) {
+            TextButton(onClick = {
+                navController.navigateToSingleTop(Route.LoginScreen().name)
+            }) {
                 Text("Login")
-            }}
-    }
+            }
+        }
+        }
 }
 
 @Preview(showSystemUi = true)
