@@ -103,7 +103,7 @@ fun ProfilePage(navController: NavController) {
             val profilePainter = if (!imageUrl.isNullOrEmpty()) {
                 rememberAsyncImagePainter(imageUrl)
             } else {
-                painterResource(id = R.drawable.ic_boy)
+                painterResource(id = R.drawable.ic_placeholder)
             }
 
             Image(
