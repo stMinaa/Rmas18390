@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -229,6 +230,16 @@ fun HomeScreen(navController: NavController) {
                 )
 
                 NavigationDrawerItem(
+                    icon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_leadboard),
+                            contentDescription = "Rang lista") },
+                    label = { Text("Rang lista", color = MaterialTheme.colorScheme.onBackground) },
+                    selected = false,
+                    onClick = { navController.navigate("leaderboard") }
+                )
+
+                NavigationDrawerItem(
 
                     icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout") },
                     label = { Text("Logout") },
@@ -277,6 +288,9 @@ fun HomeScreen(navController: NavController) {
 
                     // marker-i odeće
                     clothesList.forEach { data ->
+                        val status = data["status"]?.toString() ?: ""
+                        if (status == "Prodato") return@forEach
+
                         val lat = (data["latitude"] as? Double) ?: return@forEach
                         val lon = (data["longitude"] as? Double) ?: return@forEach
                         val id = data["id"]?.toString() ?: return@forEach

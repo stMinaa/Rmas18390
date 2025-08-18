@@ -10,13 +10,13 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.NavHostController
-import androidx.navigation.Navigator
 import androidx.navigation.compose.composable
 import androidx.navigation.navigation
 import com.example.proba.ui.HomeScreen
-import com.example.proba.ui.ProfilePage.ProfilePage
+import com.example.proba.ui.profilePage.LeaderboardScreen
+import com.example.proba.ui.profilePage.ProfilePage
 import com.example.proba.ui.clothes.AddClothesScreen
-import com.example.proba.ui.clothes.ClothesDetailScreen
+import com.example.proba.ui.profilePage.ClothesDetailScreen
 import com.example.proba.ui.login.LoginScreen
 import com.example.proba.ui.signup.UploadProfilePictureScreen
 
@@ -28,6 +28,8 @@ sealed class Route {
     data class UploadProfilePictureScreen(val name: String = "ProfilePicture") : Route()
     data class AddClothesScreen(val name: String="AddClothes"):Route()
     data class ClothesDetailScreen(val name: String="ClothesDetail"):Route()
+    data class LeaderboardScreen(val name: String = "leaderboard") : Route()
+
 }
 
 
@@ -88,6 +90,9 @@ fun MyNavigation(navHostController: NavHostController, startDestination: String,
             ClothesDetailScreen(navHostController, id)
         }
 
+        composable("leaderboard") {
+            LeaderboardScreen(navController = navHostController)
+        }
 
     }
 }

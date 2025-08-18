@@ -28,6 +28,7 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.proba.R
 import com.example.proba.ui.components.LoginTextField
+import com.example.proba.ui.components.PointsManager
 import com.google.android.gms.location.LocationServices
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
@@ -158,8 +159,8 @@ fun AddClothesScreen(navController: NavController) {
 
 fun uploadUriAndSave(
     userId: String, uri: Uri,
-    type: String, size: String, price: String,
-    storeName: String, description: String,
+    type: String, size: String,
+    price: String, storeName: String, description: String,
     context: Context, navController: NavController
 ) {
     val storageRef = FirebaseStorage.getInstance().reference
@@ -169,7 +170,12 @@ fun uploadUriAndSave(
         if (!task.isSuccessful) task.exception?.let { throw it }
         imgRef.downloadUrl
     }.addOnSuccessListener { downloadUri ->
-        save(userId, downloadUri, type, size, price, storeName, description, context, navController)
+        save(
+            userId, downloadUri, type, size,
+            "dostupno", // status je sada uvek "dostupno"
+            price, storeName, description,
+            context, navController
+        )
     }
 }
 
@@ -193,6 +199,7 @@ fun save(
     downloadUri: Uri,
     type: String,
     size: String,
+    status: String,
     price: String,
     storeName: String,
     description: String,
@@ -216,13 +223,19 @@ fun save(
             "description" to description,
             "latitude" to location.latitude,
             "longitude" to location.longitude,
-            "createdAt" to Timestamp.now()
+            "createdAt" to Timestamp.now(),
+            "status" to status
         )
 
         FirebaseFirestore.getInstance().collection("clothes")
             .add(doc)
             .addOnSuccessListener {
                 Toast.makeText(context, "Uspešno dodato!", Toast.LENGTH_SHORT).show()
+
+                PointsManager.addPoints(userId, 10) {
+                    Toast.makeText(context, "Dobio si 10 poena!", Toast.LENGTH_SHORT).show()
+                }
+
                 navController.popBackStack()
             }
             .addOnFailureListener {

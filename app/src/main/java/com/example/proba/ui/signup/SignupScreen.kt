@@ -134,7 +134,10 @@ fun SignupScreen(navController: NavController){
                                     "email" to email,
                                     "phone" to phone,
                                     "profilePhotoUrl" to "",
-                                    "signupDate" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                                    "signupDate" to com.google.firebase.firestore.FieldValue.serverTimestamp(),
+                                    "points" to 0,
+                                    "purchasedClothes" to emptyList<String>()
+
                                 )
                                 FirebaseFirestore.getInstance()
                                     .collection("users")
@@ -175,12 +178,4 @@ fun SignupScreen(navController: NavController){
             }
         }
         }
-}
-
-@Preview(showSystemUi = true)
-@Composable
-fun PrevLoginScreen() {
-    ProbaTheme {
-        SignupScreen(navController = NavController(LocalContext.current))
-    }
 }
