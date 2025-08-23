@@ -2,6 +2,7 @@ package com.example.proba.ui.signup
 
 import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
@@ -30,6 +31,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.proba.R
@@ -60,6 +62,17 @@ fun UploadProfilePictureScreen(navController: NavController) {
     ) { bitmap: Bitmap? ->
         cameraImageBitmap = bitmap
         imageUri = null
+    }
+
+    // Launcher za permisiju
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            cameraLauncher.launch() // sad može da pokrene kameru
+        } else {
+            Toast.makeText(context, "Dozvola za kameru je odbijena", Toast.LENGTH_SHORT).show()
+        }
     }
 
     Column(
@@ -130,7 +143,15 @@ fun UploadProfilePictureScreen(navController: NavController) {
                 icon = painterResource(id = R.drawable.ic_camera),
                 description = "Take a photo",
                 onClick = {
-                    cameraLauncher.launch()
+                    val hasPermission = ContextCompat.checkSelfPermission(
+                        context, Manifest.permission.CAMERA
+                    ) == PackageManager.PERMISSION_GRANTED
+
+                    if (hasPermission) {
+                        cameraLauncher.launch()
+                    } else {
+                        permissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
                 }
             )
         }

@@ -83,7 +83,7 @@ fun LeaderboardScreen(navController: NavController) {
                     "Bronze" -> R.drawable.bronze
                     "Silver" -> R.drawable.silver
                     "Gold" -> R.drawable.gold
-                    "Trophy" -> R.drawable.trophy
+                    "Trophy" -> R.drawable.trophy_largest
                     else -> null
                 }
 

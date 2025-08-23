@@ -49,6 +49,7 @@ import com.example.proba.service.LocationService
 import com.example.proba.ui.components.LocationTracker
 import com.example.proba.ui.theme.Pink60
 import com.example.proba.service.ServiceStateManager
+import com.example.proba.ui.components.PointsManager
 import com.google.accompanist.permissions.*
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -308,7 +309,22 @@ fun HomeScreen(navController: NavController) {
                             icon = markerIcon,
 
                             onClick = {
-                                // Na klik ideš na detalje
+                                // Provera distance u metrima
+                                val distance = FloatArray(1)
+                                android.location.Location.distanceBetween(
+                                    userLocation.latitude, userLocation.longitude,
+                                    lat, lon,
+                                    distance
+                                )
+
+                                if (userId != null && distance[0] <= 20f) { // 20 metara
+                                    PointsManager.addPoints(userId, 1)
+                                    Toast.makeText(context, "Dobili ste poen +1.", Toast.LENGTH_SHORT).show()
+
+                                } else if (distance[0] > 20f) {
+                                    Toast.makeText(context, "Morate biti bliže markeru da biste dobili poen", Toast.LENGTH_SHORT).show()
+                                }
+
                                 navController.navigate("ClothesDetail/$id")
                                 true
 

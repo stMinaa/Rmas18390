@@ -1,13 +1,16 @@
 package com.example.proba.ui.clothes
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.launch
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,6 +27,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.proba.R
@@ -64,6 +68,17 @@ fun AddClothesScreen(navController: NavController) {
     ) { bmp: Bitmap? ->
         cameraBitmap = bmp
         imageUri = null
+    }
+
+    // Launcher za permisiju
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            cameraLauncher.launch() // pokreni kameru posle odobrene permisije
+        } else {
+            Toast.makeText(context, "Dozvola za kameru je odbijena", Toast.LENGTH_SHORT).show()
+        }
     }
 
     Column(
@@ -118,7 +133,17 @@ fun AddClothesScreen(navController: NavController) {
 
             Spacer(Modifier.width(16.dp))
 
-            Button(onClick = { cameraLauncher.launch(null) }) {
+            Button(onClick = {
+                val hasPermission = ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.CAMERA
+                ) == PackageManager.PERMISSION_GRANTED
+
+                if (hasPermission) {
+                    cameraLauncher.launch()
+                } else {
+                    permissionLauncher.launch(Manifest.permission.CAMERA)
+                }
+            }) {
                 Text("Kamera")
             }
         }
@@ -224,22 +249,35 @@ fun save(
             "latitude" to location.latitude,
             "longitude" to location.longitude,
             "createdAt" to Timestamp.now(),
-            "status" to status
+            "status" to status,
+            "comments" to listOf<Map<String, Any>>(),
+            "ratings" to listOf<Map<String, Any>>()
         )
 
         FirebaseFirestore.getInstance().collection("clothes")
             .add(doc)
-            .addOnSuccessListener {
+            .addOnSuccessListener { docRef ->  // ovde promenjeno: documentReference -> docRef
                 Toast.makeText(context, "Uspešno dodato!", Toast.LENGTH_SHORT).show()
-
                 PointsManager.addPoints(userId, 10) {
                     Toast.makeText(context, "Dobio si 10 poena!", Toast.LENGTH_SHORT).show()
                 }
+
+                // BONUS POENI za kvalitet opisa
+                val descriptionLengthThreshold = 30 // minimum 20 karaktera da bi dobio bonus
+                if (description.trim().length >= descriptionLengthThreshold) {
+                    PointsManager.addPoints(userId, 3) {
+                        Toast.makeText(context, "Bonus 3 poena za kvalitetan opis!", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                docRef.collection("comments")
+                docRef.collection("ratings")
 
                 navController.popBackStack()
             }
             .addOnFailureListener {
                 Toast.makeText(context, "Greška: ${it.message}", Toast.LENGTH_SHORT).show()
             }
+
     }
 }

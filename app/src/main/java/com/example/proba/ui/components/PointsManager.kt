@@ -22,11 +22,14 @@ object PointsManager {
 
     fun calculateRank(points: Int): String {
         return when {
-            points < 50 -> "No rank"
-            points < 100 -> "Bronze"
-            points < 200 -> "Silver"
-            points < 500 -> "Gold"
-            else -> "Trophy"
+            points < 100 -> "No rank"
+            points in 100..199 -> "Bronze"
+            points in 200..299 -> "Silver"
+            points in 300..399 -> "Gold"
+            points >= 400 -> "Trophy"
+            else -> "No rank"
         }
     }
+
+
 }
