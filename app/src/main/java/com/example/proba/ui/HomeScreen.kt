@@ -20,13 +20,20 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -40,6 +47,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
@@ -56,12 +64,15 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
 import com.example.proba.ui.components.bitmapDescriptorFromVector
 import com.example.proba.ui.components.createCustomMarker
 import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @SuppressLint("MissingPermission")
@@ -86,6 +97,10 @@ fun HomeScreen(navController: NavController) {
 
     var hasMovedCamera by remember { mutableStateOf(false) }
     var isTracking by remember { mutableStateOf(ServiceStateManager.isServiceRunning(context)) }
+
+    // NEW: Table mode toggle
+    var tableMode by rememberSaveable { mutableStateOf(false) } // zapamti mod
+
 
     // Marker za isticanje pin-a
     var highlightedMarker by remember { mutableStateOf<String?>(null) }
@@ -185,8 +200,9 @@ fun HomeScreen(navController: NavController) {
             }
     }
 
-
-
+    // (zadržavam tvoj “DEO ZA TABELU” state – trenutno ga ne koristimo)
+    val sheetState = rememberModalBottomSheetState()
+    var showSheet by remember { mutableStateOf(false) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -234,14 +250,15 @@ fun HomeScreen(navController: NavController) {
                     icon = {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_leadboard),
-                            contentDescription = "Rang lista") },
+                            contentDescription = "Rang lista"
+                        )
+                    },
                     label = { Text("Rang lista", color = MaterialTheme.colorScheme.onBackground) },
                     selected = false,
                     onClick = { navController.navigate("leaderboard") }
                 )
 
                 NavigationDrawerItem(
-
                     icon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Logout") },
                     label = { Text("Logout") },
                     selected = false,
@@ -259,10 +276,29 @@ fun HomeScreen(navController: NavController) {
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
-                    title = { Text("Mapa i Lokacija", color = Color.White) },
+                    title = {
+                        Text(
+                            if (tableMode) "Tabela objekata" else "Mapa i Lokacija",
+                            color = Color.White
+                        )
+                    },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Meni", tint = MaterialTheme.colorScheme.onBackground)
+                            Icon(
+                                Icons.Default.Menu,
+                                contentDescription = "Meni",
+                                tint = MaterialTheme.colorScheme.onBackground
+                            )
+                        }
+                    },
+                    actions = {
+                        // NEW: Toggle za Table/Map mode
+                        IconButton(onClick = { tableMode = !tableMode }) {
+                            Icon(
+                                Icons.Default.List,
+                                contentDescription = if (tableMode) "Prikaži mapu" else "Prikaži tabelu",
+                                tint = MaterialTheme.colorScheme.onBackground
+                            )
                         }
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -274,68 +310,81 @@ fun HomeScreen(navController: NavController) {
             Box(
                 Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)) {
+                    .padding(paddingValues)
+            ) {
 
-                GoogleMap(
-                    modifier = Modifier.fillMaxSize(),
-                    cameraPositionState = cameraPositionState
-                ) {
-                    // marker za usera
-                    Marker(
-                        state = MarkerState(position = userLocation),
-                        title = "Tvoja lokacija",
-                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
-                    )
-
-                    // marker-i odeće
-                    clothesList.forEach { data ->
-                        val status = data["status"]?.toString() ?: ""
-                        if (status == "Prodato") return@forEach
-
-                        val lat = (data["latitude"] as? Double) ?: return@forEach
-                        val lon = (data["longitude"] as? Double) ?: return@forEach
-                        val id = data["id"]?.toString() ?: return@forEach
-                        val description = data["description"]?.toString() ?: "Nema opisa"
-
-                        val markerIcon = if (id == highlightedMarker) {
-                            createCustomMarker(context, R.drawable.ic_purple_pin, R.drawable.ic_clothes)
-                        } else {
-                            createCustomMarker(context, R.drawable.ic_pink_pin2, R.drawable.ic_clothes)
-                        }
-
+                // === PRIKAZ: MAPA ili TABELA ===
+                if (!tableMode) {
+                    // ----------------- MAPA (tvoje isto) -----------------
+                    GoogleMap(
+                        modifier = Modifier.fillMaxSize(),
+                        cameraPositionState = cameraPositionState
+                    ) {
+                        // marker za usera
                         Marker(
-                            state = MarkerState(position = LatLng(lat, lon)),
-                            title = description,
-                            icon = markerIcon,
-
-                            onClick = {
-                                // Provera distance u metrima
-                                val distance = FloatArray(1)
-                                android.location.Location.distanceBetween(
-                                    userLocation.latitude, userLocation.longitude,
-                                    lat, lon,
-                                    distance
-                                )
-
-                                if (userId != null && distance[0] <= 20f) { // 20 metara
-                                    PointsManager.addPoints(userId, 1)
-                                    Toast.makeText(context, "Dobili ste poen +1.", Toast.LENGTH_SHORT).show()
-
-                                } else if (distance[0] > 20f) {
-                                    Toast.makeText(context, "Morate biti bliže markeru da biste dobili poen", Toast.LENGTH_SHORT).show()
-                                }
-
-                                navController.navigate("ClothesDetail/$id")
-                                true
-
-                            }
+                            state = MarkerState(position = userLocation),
+                            title = "Tvoja lokacija",
+                            icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
                         )
 
+                        // marker-i odeće
+                        clothesList.forEach { data ->
+                            val status = data["status"]?.toString() ?: ""
+                            if (status == "Prodato") return@forEach
+
+                            val lat = (data["latitude"] as? Double) ?: return@forEach
+                            val lon = (data["longitude"] as? Double) ?: return@forEach
+                            val id = data["id"]?.toString() ?: return@forEach
+                            val description = data["description"]?.toString() ?: "Nema opisa"
+
+                            val markerIcon = if (id == highlightedMarker) {
+                                createCustomMarker(context, R.drawable.ic_purple_pin, R.drawable.ic_clothes)
+                            } else {
+                                createCustomMarker(context, R.drawable.ic_pink_pin2, R.drawable.ic_clothes)
+                            }
+
+                            Marker(
+                                state = MarkerState(position = LatLng(lat, lon)),
+                                title = description,
+                                icon = markerIcon,
+                                onClick = {
+                                    // Provera distance u metrima
+                                    val distance = FloatArray(1)
+                                    android.location.Location.distanceBetween(
+                                        userLocation.latitude, userLocation.longitude,
+                                        lat, lon,
+                                        distance
+                                    )
+
+                                    if (userId != null && distance[0] <= 20f) { // 20 metara
+                                        PointsManager.addPoints(userId, 1)
+                                        Toast.makeText(context, "Dobili ste poen +1.", Toast.LENGTH_SHORT).show()
+                                    } else if (distance[0] > 20f) {
+                                        Toast.makeText(
+                                            context,
+                                            "Morate biti bliže markeru da biste dobili poen",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+
+                                    navController.navigate("ClothesDetail/$id")
+                                    true
+                                }
+                            )
+                        }
                     }
+                } else {
+                    // ----------------- TABELA (NOVO) -----------------
+                    ClothesTable(
+                        items = clothesList,
+                        onRowClick = { id ->
+                            navController.navigate("ClothesDetail/$id")
+                        }
+                    )
                 }
 
-
-                if (!locationPermissionState.allPermissionsGranted) {
+                // Dozvole za lokaciju
+                if (!locationPermissionState.allPermissionsGranted && !tableMode) {
                     Button(
                         onClick = { locationPermissionState.launchMultiplePermissionRequest() },
                         modifier = Modifier
@@ -346,10 +395,9 @@ fun HomeScreen(navController: NavController) {
                     }
                 }
 
+                // FAB za dodavanje – prikazujemo i u tabeli i na mapi (može i samo na mapi po želji)
                 FloatingActionButton(
-                    onClick = {
-                        navController.navigate("AddClothes")
-                    },
+                    onClick = { navController.navigate("AddClothes") },
                     containerColor = Pink60,
                     shape = CircleShape,
                     modifier = Modifier
@@ -365,23 +413,26 @@ fun HomeScreen(navController: NavController) {
                     )
                 }
 
-                FloatingActionButton(
-                    onClick = {
-                        cameraPositionState.position = CameraPosition.fromLatLngZoom(userLocation, 15f)
-                    },
-                    containerColor = Pink60,
-                    shape = CircleShape,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 65.dp, bottom = 16.dp)
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_center),
-                        contentDescription = "Centiraj me",
+                // FAB za centriranje – samo kad je mapa aktivna
+                if (!tableMode) {
+                    FloatingActionButton(
+                        onClick = {
+                            cameraPositionState.position = CameraPosition.fromLatLngZoom(userLocation, 15f)
+                        },
+                        containerColor = Pink60,
+                        shape = CircleShape,
                         modifier = Modifier
-                            .size(60.dp)
-                            .padding(16.dp)
-                    )
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 65.dp, bottom = 16.dp)
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_center),
+                            contentDescription = "Centiraj me",
+                            modifier = Modifier
+                                .size(60.dp)
+                                .padding(16.dp)
+                        )
+                    }
                 }
             }
         }
@@ -406,5 +457,98 @@ fun HomeScreen(navController: NavController) {
     }
 }
 
+/** ---------- NOVO: Tabela ---------- **/
+@Composable
+private fun ClothesTable(
+    items: List<Map<String, Any>>,
+    onRowClick: (id: String) -> Unit
+) {
+    val sdf = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
+
+    // Horizontalni scroll za celu tabelu
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .horizontalScroll(rememberScrollState())
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+        ) {
+            // Zaglavlje tabele
+            Row(
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("Slika", modifier = Modifier.width(100.dp), fontWeight = FontWeight.Bold)
+                Text("Tip", modifier = Modifier.width(100.dp), fontWeight = FontWeight.Bold)
+                Text("Veličina", modifier = Modifier.width(80.dp), fontWeight = FontWeight.Bold)
+                Text("Cena", modifier = Modifier.width(80.dp), fontWeight = FontWeight.Bold)
+                Text("Radnja", modifier = Modifier.width(120.dp), fontWeight = FontWeight.Bold)
+                Text("Status", modifier = Modifier.width(100.dp), fontWeight = FontWeight.Bold)
+                Text("Kreirano", modifier = Modifier.width(120.dp), fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(Modifier.height(4.dp))
+
+            // Redovi tabele
+            items.forEach { data ->
+                val id = data["id"]?.toString().orEmpty()
+                val type = data["type"]?.toString().orEmpty()
+                val size = data["size"]?.toString().orEmpty()
+                val price = data["price"]?.toString().orEmpty()
+                val storeName = data["storeName"]?.toString().orEmpty()
+                val status = data["status"]?.toString().orEmpty()
+                val createdAt = (data["createdAt"] as? Timestamp)?.toDate()
+                val createdAtText = createdAt?.let { sdf.format(it) } ?: "-"
+                val imageUrl = data["photoUrl"]?.toString() ?: ""
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = id.isNotEmpty()) { onRowClick(id) }
+                        .padding(vertical = 4.dp)
+                        .background(MaterialTheme.colorScheme.surface)
+                        .padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (imageUrl.isNotEmpty()) {
+                        AsyncImage(
+                            model = imageUrl,
+                            contentDescription = "Slika odeće",
+                            modifier = Modifier
+                                .width(100.dp)
+                                .height(100.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .width(100.dp)
+                                .height(100.dp)
+                                .background(Color.LightGray)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("Nema slike", color = Color.DarkGray)
+                        }
+                    }
+
+                    Text(type, modifier = Modifier.width(100.dp))
+                    Text(size, modifier = Modifier.width(80.dp))
+                    Text(price, modifier = Modifier.width(80.dp))
+                    Text(storeName, modifier = Modifier.width(120.dp))
+                    Text(status, modifier = Modifier.width(100.dp))
+                    Text(createdAtText, modifier = Modifier.width(120.dp))
+                }
+            }
+        }
+    }
+}
 
 
