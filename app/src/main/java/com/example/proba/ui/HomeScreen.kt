@@ -2,47 +2,33 @@ package com.example.proba.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.os.Build
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.DrawableRes
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -54,28 +40,34 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.proba.R
 import com.example.proba.service.LocationService
-import com.example.proba.ui.components.LocationTracker
-import com.example.proba.ui.theme.Pink60
 import com.example.proba.service.ServiceStateManager
+import com.example.proba.ui.components.LocationTracker
 import com.example.proba.ui.components.PointsManager
-import com.google.accompanist.permissions.*
-import com.google.android.gms.maps.model.BitmapDescriptor
+import com.example.proba.ui.components.createCustomMarker
+import com.example.proba.ui.theme.Pink60
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.*
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.launch
-import com.example.proba.ui.components.bitmapDescriptorFromVector
-import com.example.proba.ui.components.createCustomMarker
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
+import kotlin.math.roundToInt
+import androidx.compose.runtime.mutableStateMapOf
+import kotlinx.coroutines.tasks.await
+
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
-@SuppressLint("MissingPermission")
+@SuppressLint("MissingPermission", "RememberReturnType")
 @Composable
 fun HomeScreen(navController: NavController) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -98,14 +90,15 @@ fun HomeScreen(navController: NavController) {
     var hasMovedCamera by remember { mutableStateOf(false) }
     var isTracking by remember { mutableStateOf(ServiceStateManager.isServiceRunning(context)) }
 
-    // NEW: Table mode toggle
-    var tableMode by rememberSaveable { mutableStateOf(false) } // zapamti mod
+    // Table/Map toggle
+    var tableMode by rememberSaveable { mutableStateOf(false) }
 
-
-    // Marker za isticanje pin-a
+    // Marker highlight
     var highlightedMarker by remember { mutableStateOf<String?>(null) }
 
+    // Sirovi podaci i filtrirani prikaz
     val clothesList = remember { mutableStateListOf<Map<String, Any>>() }
+    var filteredClothes by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
 
     // NOTIFIKACIJE
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -150,7 +143,6 @@ fun HomeScreen(navController: NavController) {
 
     // --- FIX ZA NOTIFIKACIJE I PIN ---
     LaunchedEffect(activity) {
-        // Navigacija ka ClothesDetail odmah
         snapshotFlow { activity?.intent?.getStringExtra("clothesId") }
             .collect { id ->
                 id?.let {
@@ -161,7 +153,6 @@ fun HomeScreen(navController: NavController) {
     }
 
     LaunchedEffect(activity) {
-        // Isticanje pin-a
         snapshotFlow {
             activity?.intent?.getStringExtra("highlightPinId")
                 ?: activity?.intent?.getStringExtra("open_object_id")
@@ -175,7 +166,8 @@ fun HomeScreen(navController: NavController) {
                     .addOnSuccessListener { doc ->
                         val lat = (doc["latitude"] as? Double) ?: return@addOnSuccessListener
                         val lon = (doc["longitude"] as? Double) ?: return@addOnSuccessListener
-                        cameraPositionState.position = CameraPosition.fromLatLngZoom(LatLng(lat, lon), 17f)
+                        cameraPositionState.position =
+                            CameraPosition.fromLatLngZoom(LatLng(lat, lon), 17f)
                     }
                 delay(5000)
                 highlightedMarker = null
@@ -197,12 +189,123 @@ fun HomeScreen(navController: NavController) {
                     clothData["id"] = doc.id
                     clothesList.add(clothData)
                 }
+                // inicijalno bez filtera
+                filteredClothes = clothesList.toList()
             }
     }
 
-    // (zadržavam tvoj “DEO ZA TABELU” state – trenutno ga ne koristimo)
+    // Sheet state
     val sheetState = rememberModalBottomSheetState()
     var showSheet by remember { mutableStateOf(false) }
+
+    // === PROMENLJIVE ZA UI FILTERA ===
+    var localQuery by rememberSaveable { mutableStateOf("") }
+    var showStartPicker by remember { mutableStateOf(false) }
+    var showEndPicker by remember { mutableStateOf(false) }
+    val startPickerState = rememberDatePickerState()
+    val endPickerState = rememberDatePickerState()
+    var startDateText by remember { mutableStateOf<String?>(null) }
+    var endDateText by remember { mutableStateOf<String?>(null) }
+    var localRadius by rememberSaveable { mutableStateOf(0f) }
+
+    val sdfDisplay = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
+    val sdfFilter = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
+
+    var localAuthorId by rememberSaveable { mutableStateOf("") } // novi filter po autoru
+
+    // === FILTER LOGIKA ===
+    fun applyFilters() {
+        val startDate = startDateText?.let { runCatching { sdfFilter.parse(it) }.getOrNull() }
+        val endDate = endDateText?.let { runCatching { sdfFilter.parse(it) }.getOrNull() }
+
+        filteredClothes = clothesList.filter { data ->
+            // 1) Tekstualni filter (type/description/storeName)
+            val query = localQuery.trim().lowercase()
+            val type = data["type"]?.toString().orEmpty().lowercase()
+            val desc = data["description"]?.toString().orEmpty().lowercase()
+            val store = data["storeName"]?.toString().orEmpty().lowercase()
+            val queryMatch = query.isBlank() || type.contains(query) || desc.contains(query) || store.contains(query)
+
+            // 2) Datum OD/DO (koristi se polje createdAt kao Timestamp)
+            val createdAtDate = (data["createdAt"] as? Timestamp)?.toDate()
+            val dateMatch =
+                (startDate == null || (createdAtDate != null && !createdAtDate.before(startDate))) &&
+                        (endDate == null || (createdAtDate != null && !createdAtDate.after(endDate)))
+
+            // 3) Radijus od trenutne lokacije (km)
+            val radiusMatch = if (localRadius > 0f) {
+                val lat = (data["latitude"] as? Double) ?: return@filter false
+                val lon = (data["longitude"] as? Double) ?: return@filter false
+                val distance = FloatArray(1)
+                android.location.Location.distanceBetween(
+                    userLocation.latitude, userLocation.longitude,
+                    lat, lon,
+                    distance
+                )
+                distance[0] <= localRadius //* 1000 // km -> m
+
+            } else true
+
+            val authorMatch = if (localAuthorId.isNotEmpty()) {
+                data["authorId"] == localAuthorId
+            } else true
+
+            queryMatch && dateMatch && radiusMatch && authorMatch
+        }
+    }
+
+    // Reaguj na promene: lokacije (za radijus), teksta, datuma i izvornog niza
+    LaunchedEffect(userLocation, localRadius, localQuery, startDateText, endDateText, clothesList) {
+        applyFilters()
+    }
+
+
+    // === DEO ZA AUTORE (PASTE OVDE, ZAMENI STARI BLOK) ===
+    val authorsMap = remember { mutableStateMapOf<String, String>() } // authorId -> display name (stateful map)
+
+// Observe changes to clothesList contents and fetch only needed user docs.
+// snapshotFlow emituje svaki put kad se lista (sadržaj) promeni.
+    LaunchedEffect(Unit) {
+        snapshotFlow { clothesList.mapNotNull { it["authorId"]?.toString() }.distinct() }
+            .collect { ids ->
+                val firestore = FirebaseFirestore.getInstance()
+                // fetch missing authors
+                ids.forEach { authorId ->
+                    if (!authorsMap.containsKey(authorId)) {
+                        try {
+                            val doc = firestore.collection("users").document(authorId).get().await()
+                            if (doc.exists()) {
+                                val firstName = doc.getString("firstName").orEmpty()
+                                val lastName = doc.getString("lastName").orEmpty()
+                                val fullName = listOf(firstName, lastName).filter { it.isNotBlank() }.joinToString(" ")
+                                authorsMap[authorId] = if (fullName.isBlank()) "Nepoznat" else fullName
+                            } else {
+                                authorsMap[authorId] = "Nepoznat"
+                            }
+                        } catch (e: Exception) {
+                            // ako fetch pukne (npr. pravila), stavimo fallback
+                            authorsMap[authorId] = "Nepoznat"
+                        }
+                    }
+                }
+                // ukloni autore koji vise nisu aktivni (opciono, ali držimo map "čistom")
+                val toRemove = authorsMap.keys - ids.toSet()
+                toRemove.forEach { authorsMap.remove(it) }
+            }
+    }
+
+// derived list for dropdown (sorted by display name)
+    val authorsList by remember {
+        derivedStateOf {
+            authorsMap.map { it.key to it.value }.sortedBy { it.second }
+        }
+    }
+
+// ensure filters re-run also when author selection changes (automatic filtering)
+    LaunchedEffect(userLocation, localRadius, localQuery, startDateText, endDateText, clothesList, localAuthorId) {
+        applyFilters()
+    }
+
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -233,8 +336,7 @@ fun HomeScreen(navController: NavController) {
                         checked = isTracking,
                         onCheckedChange = { isChecked ->
                             isTracking = isChecked
-                            if (isChecked) startLocationService()
-                            else stopLocationService()
+                            if (isChecked) startLocationService() else stopLocationService()
                         }
                     )
                 }
@@ -292,7 +394,16 @@ fun HomeScreen(navController: NavController) {
                         }
                     },
                     actions = {
-                        // NEW: Toggle za Table/Map mode
+
+                        // Otvaranje filter sheet-a
+                        IconButton(onClick = { showSheet = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Filteri",
+                                tint = MaterialTheme.colorScheme.onBackground
+                            )
+                        }
+                        // Toggle Table/Map
                         IconButton(onClick = { tableMode = !tableMode }) {
                             Icon(
                                 Icons.Default.List,
@@ -300,6 +411,7 @@ fun HomeScreen(navController: NavController) {
                                 tint = MaterialTheme.colorScheme.onBackground
                             )
                         }
+
                     },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = MaterialTheme.colorScheme.background
@@ -312,10 +424,8 @@ fun HomeScreen(navController: NavController) {
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-
-                // === PRIKAZ: MAPA ili TABELA ===
+                // === MAPA ili TABELA ===
                 if (!tableMode) {
-                    // ----------------- MAPA (tvoje isto) -----------------
                     GoogleMap(
                         modifier = Modifier.fillMaxSize(),
                         cameraPositionState = cameraPositionState
@@ -327,8 +437,8 @@ fun HomeScreen(navController: NavController) {
                             icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
                         )
 
-                        // marker-i odeće
-                        clothesList.forEach { data ->
+                        // marker-i odeće (FILTRIRANI)
+                        filteredClothes.forEach { data ->
                             val status = data["status"]?.toString() ?: ""
                             if (status == "Prodato") return@forEach
 
@@ -348,7 +458,6 @@ fun HomeScreen(navController: NavController) {
                                 title = description,
                                 icon = markerIcon,
                                 onClick = {
-                                    // Provera distance u metrima
                                     val distance = FloatArray(1)
                                     android.location.Location.distanceBetween(
                                         userLocation.latitude, userLocation.longitude,
@@ -356,7 +465,7 @@ fun HomeScreen(navController: NavController) {
                                         distance
                                     )
 
-                                    if (userId != null && distance[0] <= 20f) { // 20 metara
+                                    if (userId != null && distance[0] <= 20f) {
                                         PointsManager.addPoints(userId, 1)
                                         Toast.makeText(context, "Dobili ste poen +1.", Toast.LENGTH_SHORT).show()
                                     } else if (distance[0] > 20f) {
@@ -374,9 +483,8 @@ fun HomeScreen(navController: NavController) {
                         }
                     }
                 } else {
-                    // ----------------- TABELA (NOVO) -----------------
                     ClothesTable(
-                        items = clothesList,
+                        items = filteredClothes,
                         onRowClick = { id ->
                             navController.navigate("ClothesDetail/$id")
                         }
@@ -395,7 +503,7 @@ fun HomeScreen(navController: NavController) {
                     }
                 }
 
-                // FAB za dodavanje – prikazujemo i u tabeli i na mapi (može i samo na mapi po želji)
+                // FAB za dodavanje
                 FloatingActionButton(
                     onClick = { navController.navigate("AddClothes") },
                     containerColor = Pink60,
@@ -435,10 +543,180 @@ fun HomeScreen(navController: NavController) {
                     }
                 }
             }
+
+            // ======== FILTER SHEET ========
+            if (showSheet) {
+                ModalBottomSheet(
+                    sheetState = sheetState,
+                    onDismissRequest = { showSheet = false }
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text("Filteri", style = MaterialTheme.typography.headlineSmall)
+
+                        // 1) Autor
+                        var expandedAuthor by remember { mutableStateOf(false) }
+                        Column {
+                            Text("Autor")
+                            ExposedDropdownMenuBox(
+                                expanded = expandedAuthor,
+                                onExpandedChange = { expandedAuthor = !expandedAuthor }
+                            ) {
+                                val authorDisplay = when {
+                                    localAuthorId.isEmpty() -> "Svi autori"
+                                    authorsMap.containsKey(localAuthorId) -> authorsMap[localAuthorId]!!
+                                    else -> "Učitavanje..."
+                                }
+
+                                OutlinedTextField(
+                                    value = authorDisplay,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("Izaberi autora") },
+                                    modifier = Modifier.menuAnchor()
+                                )
+
+                                ExposedDropdownMenu(
+                                    expanded = expandedAuthor,
+                                    onDismissRequest = { expandedAuthor = false }
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text("Svi autori") },
+                                        onClick = {
+                                            localAuthorId = ""
+                                            expandedAuthor = false
+                                        }
+                                    )
+                                    // prikazujemo samo autore koji imaju oglas
+                                    authorsList.forEach { (id, name) ->
+                                        DropdownMenuItem(
+                                            text = { Text(name) },
+                                            onClick = {
+                                                localAuthorId = id
+                                                expandedAuthor = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // 2) Tekstualna pretraga
+                        OutlinedTextField(
+                            value = localQuery,
+                            onValueChange = { localQuery = it },
+                            label = { Text("Pretraga (tip, opis, radnja…)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        // 3) Period OD/DO
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Period")
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedButton(onClick = { showStartPicker = true }) {
+                                    Text(startDateText ?: "Datum OD")
+                                }
+                                OutlinedButton(onClick = { showEndPicker = true }) {
+                                    Text(endDateText ?: "Datum DO")
+                                }
+                            }
+                        }
+
+                        // 4) Radijus (m)
+                        Column {
+                            Text("Radijus (m)")
+                            Slider(
+                                value = localRadius,
+                                onValueChange = { localRadius = it },
+                                valueRange = 0f..2000f,
+                                steps = 39,
+                                onValueChangeFinished = {
+                                    localRadius = (localRadius / 50).roundToInt() * 50f
+                                }
+                            )
+                            Text("${"%.1f".format(localRadius)} m")
+                        }
+
+                        // Dugmad Reset i Primeni
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            TextButton(onClick = {
+                                localQuery = ""
+                                startDateText = null
+                                endDateText = null
+                                localRadius = 0f
+                                localAuthorId = ""
+                                applyFilters()
+                            }) { Text("Reset") }
+
+                            Button(onClick = {
+                                applyFilters()
+                                showSheet = false
+                            }) {
+                                Text("Primeni")
+                            }
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+                    }
+                }
+            }
+
+
+
+            // DatePicker dijalozi
+            if (showStartPicker) {
+                DatePickerDialog(
+                    onDismissRequest = { showStartPicker = false },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            val millis = startPickerState.selectedDateMillis
+                            startDateText = millis?.let {
+                                sdfDisplay.format(it)
+                            }
+                            showStartPicker = false
+                        }) { Text("OK") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showStartPicker = false }) { Text("Otkaži") }
+                    }
+                ) {
+                    DatePicker(state = startPickerState)
+                }
+            }
+            if (showEndPicker) {
+                DatePickerDialog(
+                    onDismissRequest = { showEndPicker = false },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            val millis = endPickerState.selectedDateMillis
+                            endDateText = millis?.let {
+                                sdfDisplay.format(it)
+                            }
+                            showEndPicker = false
+                        }) { Text("OK") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showEndPicker = false }) { Text("Otkaži") }
+                    }
+                ) {
+                    DatePicker(state = endPickerState)
+                }
+            }
+            // ======== KRAJ SHEET-A ========
         }
     }
 
-    // Lokacijski tracker
+    // Lokacijski tracker (zadržano)
     if (userId != null && locationPermissionState.allPermissionsGranted) {
         LocationTracker(
             userId = userId,
@@ -457,7 +735,7 @@ fun HomeScreen(navController: NavController) {
     }
 }
 
-/** ---------- NOVO: Tabela ---------- **/
+/** ---------- Tabela (isto, samo koristi filtrirane podatke) ---------- **/
 @Composable
 private fun ClothesTable(
     items: List<Map<String, Any>>,
@@ -465,7 +743,6 @@ private fun ClothesTable(
 ) {
     val sdf = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
 
-    // Horizontalni scroll za celu tabelu
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -476,7 +753,6 @@ private fun ClothesTable(
                 .fillMaxWidth()
                 .padding(8.dp)
         ) {
-            // Zaglavlje tabele
             Row(
                 modifier = Modifier
                     .background(MaterialTheme.colorScheme.primaryContainer)
@@ -494,7 +770,6 @@ private fun ClothesTable(
 
             Spacer(Modifier.height(4.dp))
 
-            // Redovi tabele
             items.forEach { data ->
                 val id = data["id"]?.toString().orEmpty()
                 val type = data["type"]?.toString().orEmpty()
@@ -550,5 +825,3 @@ private fun ClothesTable(
         }
     }
 }
-
-
