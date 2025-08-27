@@ -61,7 +61,7 @@ fun ClothesDetailScreen(navController: NavController, clothId: String) {
     var isFullscreen by remember { mutableStateOf(false) }
 
     var type by remember { mutableStateOf("") }
-    var size by remember { mutableStateOf("") }
+    //var size by remember { mutableStateOf("") }
     var storeName by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -87,7 +87,7 @@ fun ClothesDetailScreen(navController: NavController, clothId: String) {
                 val data = doc.data!!
                 clothData = data
                 type = data["type"]?.toString() ?: ""
-                size = data["size"]?.toString() ?: ""
+               // size = data["size"]?.toString() ?: ""
                 storeName = data["storeName"]?.toString() ?: ""
                 price = data["price"]?.toString() ?: ""
                 description = data["description"]?.toString() ?: ""
@@ -158,7 +158,7 @@ fun ClothesDetailScreen(navController: NavController, clothId: String) {
                 .update(
                     mapOf(
                         "type" to type,
-                        "size" to size,
+                        //"size" to size,
                         "storeName" to storeName,
                         "price" to price,
                         "description" to description
@@ -252,7 +252,7 @@ fun ClothesDetailScreen(navController: NavController, clothId: String) {
                         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             AsyncImage(
                                 model = url,
-                                contentDescription = "Slika odeće",
+                                contentDescription = "Slika proizvoda",
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
                                     .size(180.dp)
@@ -299,8 +299,8 @@ fun ClothesDetailScreen(navController: NavController, clothId: String) {
                 item {
                     OutlinedTextField(value = type, onValueChange = { type = it }, label = { Text("Tip") }, enabled = isEditing, modifier = Modifier.fillMaxWidth(), colors = fieldColors(isEditing))
                     Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(value = size, onValueChange = { size = it }, label = { Text("Veličina") }, enabled = isEditing, modifier = Modifier.fillMaxWidth(), colors = fieldColors(isEditing))
-                    Spacer(Modifier.height(8.dp))
+                    //OutlinedTextField(value = size, onValueChange = { size = it }, label = { Text("Veličina") }, enabled = isEditing, modifier = Modifier.fillMaxWidth(), colors = fieldColors(isEditing))
+                    //Spacer(Modifier.height(8.dp))
                     OutlinedTextField(value = storeName, onValueChange = { storeName = it }, label = { Text("Prodavnica") }, enabled = isEditing, modifier = Modifier.fillMaxWidth(), colors = fieldColors(isEditing))
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(value = price, onValueChange = { price = it }, label = { Text("Cena") }, enabled = isEditing, modifier = Modifier.fillMaxWidth(), colors = fieldColors(isEditing))
@@ -428,7 +428,7 @@ fun ClothesDetailScreen(navController: NavController, clothId: String) {
             }
         }
 
-        else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Odeća nije pronađena") }
+        else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Proizvod nije pronađen") }
     }
 }
 

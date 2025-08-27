@@ -51,7 +51,7 @@ fun AddClothesScreen(navController: NavController) {
     var cameraBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
     var type by remember { mutableStateOf("") }
-    var size by remember { mutableStateOf("") }
+    //var size by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
     var storeName by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -85,7 +85,7 @@ fun AddClothesScreen(navController: NavController) {
         modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Dodaj komad odeće", style = MaterialTheme.typography.headlineSmall)
+        Text("Dodaj proizvod", style = MaterialTheme.typography.headlineSmall)
         Spacer(Modifier.height(24.dp))
 
         Box(
@@ -150,10 +150,10 @@ fun AddClothesScreen(navController: NavController) {
 
         Spacer(Modifier.height(16.dp))
 
-        LoginTextField(value = type, onValueChange = { type = it }, labelText = "Tip odeće", modifier = Modifier.fillMaxWidth())
+        LoginTextField(value = type, onValueChange = { type = it }, labelText = "Tip proizvoda", modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
-        LoginTextField(value = size, onValueChange = { size = it }, labelText = "Veličina", modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(8.dp))
+        //LoginTextField(value = size, onValueChange = { size = it }, labelText = "Veličina", modifier = Modifier.fillMaxWidth())
+        //Spacer(Modifier.height(8.dp))
         LoginTextField(value = price, onValueChange = { price = it }, labelText = "Cena", modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
         LoginTextField(value = storeName, onValueChange = { storeName = it }, labelText = "Naziv radnje", modifier = Modifier.fillMaxWidth())
@@ -166,10 +166,10 @@ fun AddClothesScreen(navController: NavController) {
             onClick = {
                 when {
                     cameraBitmap != null -> {
-                        uploadBitmapAndSave(userId, cameraBitmap!!, type, size, price, storeName, description, context, navController)
+                        uploadBitmapAndSave(userId, cameraBitmap!!, type, price, storeName, description, context, navController)
                     }
                     imageUri != null -> {
-                        uploadUriAndSave(userId, imageUri!!, type, size, price, storeName, description, context, navController)
+                        uploadUriAndSave(userId, imageUri!!, type, price, storeName, description, context, navController)
                     }
                     else -> Toast.makeText(context, "Molimo dodajte sliku", Toast.LENGTH_SHORT).show()
                 }
@@ -184,7 +184,7 @@ fun AddClothesScreen(navController: NavController) {
 
 fun uploadUriAndSave(
     userId: String, uri: Uri,
-    type: String, size: String,
+    type: String,
     price: String, storeName: String, description: String,
     context: Context, navController: NavController
 ) {
@@ -196,7 +196,7 @@ fun uploadUriAndSave(
         imgRef.downloadUrl
     }.addOnSuccessListener { downloadUri ->
         save(
-            userId, downloadUri, type, size,
+            userId, downloadUri, type,
             "dostupno", // status je sada uvek "dostupno"
             price, storeName, description,
             context, navController
@@ -206,7 +206,7 @@ fun uploadUriAndSave(
 
 fun uploadBitmapAndSave(
     userId: String, bitmap: Bitmap,
-    type: String, size: String,
+    type: String,
     price: String, storeName: String, description: String,
     context: Context, navController: NavController
 ) {
@@ -215,7 +215,7 @@ fun uploadBitmapAndSave(
         bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it)
     }
     val uri = Uri.fromFile(tempFile)
-    uploadUriAndSave(userId, uri, type, size, price, storeName, description, context, navController)
+    uploadUriAndSave(userId, uri, type, price, storeName, description, context, navController)
 }
 
 @SuppressLint("MissingPermission")
@@ -223,7 +223,7 @@ fun save(
     userId: String,
     downloadUri: Uri,
     type: String,
-    size: String,
+    //size: String,
     status: String,
     price: String,
     storeName: String,
@@ -242,7 +242,7 @@ fun save(
             "authorId" to userId,
             "photoUrl" to downloadUri.toString(),
             "type" to type,
-            "size" to size,
+            //"size" to size,
             "price" to price,
             "storeName" to storeName,
             "description" to description,
