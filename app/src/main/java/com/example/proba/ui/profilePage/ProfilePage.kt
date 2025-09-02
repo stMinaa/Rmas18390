@@ -40,7 +40,7 @@ fun ProfilePage(navController: NavController) {
     val (userData, setUserData) = remember { mutableStateOf<Map<String, Any>?>(null) }
     val (isLoading, setLoading) = remember { mutableStateOf(true) }
 
-    // Preuzimanje korisničkih podataka
+    // preuzimanje korisničkih podataka
     LaunchedEffect(userId) {
         if (userId.isNotEmpty()) {
             firestore.collection("users").document(userId).get()
@@ -87,7 +87,7 @@ fun ProfilePage(navController: NavController) {
                 contentScale = ContentScale.Crop
             )
 
-            // Profilna slika
+            //profilna slika
             val imageUrl = userData?.get("profilePhotoUrl") as? String
             val profilePainter = if (!imageUrl.isNullOrEmpty()) {
                 rememberAsyncImagePainter(imageUrl)
@@ -117,7 +117,7 @@ fun ProfilePage(navController: NavController) {
             Text(text = "Loading...", style = MaterialTheme.typography.bodyMedium)
         } else {
             userData?.let { data ->
-                // Prikaz korisničkih podataka
+
                 Text(
                     text = "${data["firstName"] ?: "N/A"} ${data["lastName"] ?: "N/A"}",
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
@@ -154,7 +154,7 @@ fun ProfilePage(navController: NavController) {
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Sekcija za kupovine
+
                 PurchasesSection(data)
             } ?: run {
                 Text(text = "No user data available", style = MaterialTheme.typography.bodyMedium)
@@ -169,7 +169,7 @@ fun PurchasesSection(userData: Map<String, Any>) {
     val purchases = (userData["purchasedClothes"] as? List<String>) ?: emptyList()
     val purchasedClothes = remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
 
-    // Učitavanje kupovina
+    // učitavanje kupovina
     LaunchedEffect(purchases) {
         val clothesList = mutableListOf<Map<String, Any>>()
         purchases.forEach { clothId ->

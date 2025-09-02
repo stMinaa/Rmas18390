@@ -197,7 +197,7 @@ fun uploadUriAndSave(
     }.addOnSuccessListener { downloadUri ->
         save(
             userId, downloadUri, type,
-            "dostupno", // status je sada uvek "dostupno"
+            "dostupno",
             price, storeName, description,
             context, navController
         )

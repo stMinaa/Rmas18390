@@ -36,16 +36,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
 
-        // 🔹 Provera da li je prvi put posle instalacije
+        //provera da li je prvi put posle instalacije
         val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
         val firstRun = prefs.getBoolean("first_run", true)
 
         if (firstRun) {
-            // Samo prvi put posle instalacije → izloguj user-a
+            // samo prvi put posle instalacije logout user
             FirebaseAuth.getInstance().signOut()
             prefs.edit().putBoolean("first_run", false).apply()
         }
-        
+
         //dodato
         // notifikacija se obrađuje samo ako je app u backgroundu
         if (!isAppInForeground()) {

@@ -15,7 +15,7 @@ import com.google.android.gms.maps.model.LatLng
 @Composable
 fun LocationTracker(
     locationPermissionState: MultiplePermissionsState,
-    userId: String, // Ostavljen ako ti nekad opet zatreba
+    userId: String, // Ostavljen ako mi opet zatreba
     onLocationUpdate: (LatLng) -> Unit
 ) {
     val context = LocalContext.current

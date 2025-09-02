@@ -40,7 +40,7 @@ object NotificationUtils {
 
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("highlightPinId", pinId) // ovo prosleđuje koji pin treba da zasvetli
+            putExtra("highlightPinId", pinId) //koji pin treba da zasvetli
         }
 
         val pendingIntent = PendingIntent.getActivity(
@@ -69,7 +69,7 @@ object NotificationUtils {
             clothesId?.let {
                 putExtra("navigateTo", "clothesDetail")
                 putExtra("clothesId", it)
-                putExtra("highlightPinId", it) // Ako želiš i da se označi pin kad se vratiš na mapu
+                putExtra("highlightPinId", it)
             }
         }
 
@@ -100,7 +100,7 @@ object NotificationUtils {
     fun getNotificationForClothes(context: Context, content: String, clothesId: String): Notification {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("clothesId", clothesId) // šaljemo ID odeće
+            putExtra("clothesId", clothesId)
         }
 
         val pendingIntent = PendingIntent.getActivity(
@@ -113,9 +113,9 @@ object NotificationUtils {
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle("VintageShopper")
             .setContentText(content)
-            .setSmallIcon(R.drawable.ic_purple_pin) // tvoja ljubičasta ikonica
+            .setSmallIcon(R.drawable.ic_purple_pin)
             .setContentIntent(pendingIntent)
-            .setAutoCancel(true) // klikom nestaje notifikacija
+            .setAutoCancel(true) // da nestaje notifikacija
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()
     }

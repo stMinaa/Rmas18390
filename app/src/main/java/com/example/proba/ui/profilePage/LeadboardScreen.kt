@@ -103,7 +103,7 @@ fun LeaderboardScreen(navController: NavController) {
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Profilna slika
+
                         val profilePainter = if (!user.profilePhotoUrl.isNullOrEmpty()) {
                             rememberAsyncImagePainter(user.profilePhotoUrl)
                         } else {
@@ -122,7 +122,7 @@ fun LeaderboardScreen(navController: NavController) {
 
                         Spacer(Modifier.width(12.dp))
 
-                        // Ime + poeni
+
                         Column(Modifier.weight(1f)) {
                             Text(
                                 text = user.name,

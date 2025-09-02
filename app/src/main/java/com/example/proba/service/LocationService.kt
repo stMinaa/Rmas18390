@@ -25,7 +25,7 @@ class LocationService : Service() {
     private var clothesListener: ListenerRegistration? = null
 
     private val notifiedItems = mutableMapOf<String, Long>()
-    private val NOTIFICATION_COOLDOWN_MS = 5 * 60 * 1000L // 5 minuta cooldown
+    private val NOTIFICATION_COOLDOWN_MS = 5 * 60 * 1000L // 5 minuta cooldown za istu stvar
 
     private var lastKnownLocation: Location? = null
 
@@ -51,7 +51,7 @@ class LocationService : Service() {
                     lastKnownLocation = location
                     saveLocation(location)
                     Log.d("LocationService", "Lokacija: ${location.latitude}, ${location.longitude}")
-                    // Ne zovemo checkNearbyItems jer koristimo snapshot listener
+
                 }
             }
         }
@@ -90,7 +90,7 @@ class LocationService : Service() {
                         val size = doc.getString("size") ?: ""
                         val authorId = doc.getString("authorId")
 
-                        // preskoči ako je isti korisnik autor
+                        // preskoči ako je korisnik autor
                         if (authorId != null && authorId == currentUserId) {
                             continue
                         }

@@ -69,7 +69,7 @@ fun UploadProfilePictureScreen(navController: NavController) {
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            cameraLauncher.launch() // sad može da pokrene kameru
+            cameraLauncher.launch()
         } else {
             Toast.makeText(context, "Dozvola za kameru je odbijena", Toast.LENGTH_SHORT).show()
         }

@@ -309,7 +309,7 @@ fun ClothesDetailScreen(navController: NavController, clothId: String) {
                     Spacer(Modifier.height(12.dp))
                 }
 
-                // Dugme Obišao/la sam
+
                 item {
                     Button(onClick = { handleObisaoSam() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) {
                         Text("Obišao/la sam", color = Color.White)
@@ -317,13 +317,13 @@ fun ClothesDetailScreen(navController: NavController, clothId: String) {
                     Spacer(Modifier.height(16.dp))
                 }
 
-                // Naslov komentara
+
                 item {
                     Text("Komentari:", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.height(8.dp))
                 }
 
-                // Lista komentara
+
                 items(commentsList) { commentItem ->
                     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -377,7 +377,7 @@ fun ClothesDetailScreen(navController: NavController, clothId: String) {
                 }
             }
 
-            // Dugme za edit (pokretanje editovanja) – samo vlasnik
+            // Dugme za edit samo autor
             if (authorId == currentUserId && !isEditing) {
                 IconButton(
                     onClick = { isEditing = true },
@@ -393,7 +393,7 @@ fun ClothesDetailScreen(navController: NavController, clothId: String) {
                 }
             }
 
-            // Dugme za Save dok je u edit mode (mali check)
+
             if (isEditing) {
                 IconButton(
                     onClick = {
@@ -415,7 +415,7 @@ fun ClothesDetailScreen(navController: NavController, clothId: String) {
                 }
             }
 
-            // Fullscreen image
+            // fullscreen
             if (isFullscreen && photoUrl != null) {
                 Dialog(onDismissRequest = { isFullscreen = false }) {
                     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
