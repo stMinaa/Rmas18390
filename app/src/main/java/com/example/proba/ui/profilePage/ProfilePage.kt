@@ -155,7 +155,7 @@ fun ProfilePage(navController: NavController) {
                 Spacer(modifier = Modifier.height(24.dp))
 
 
-                PurchasesSection(data)
+                MyProductsSection(userId)
             } ?: run {
                 Text(text = "No user data available", style = MaterialTheme.typography.bodyMedium)
             }
@@ -164,23 +164,20 @@ fun ProfilePage(navController: NavController) {
 }
 
 @Composable
-fun PurchasesSection(userData: Map<String, Any>) {
+fun MyProductsSection(userId: String) {
     val firestore = FirebaseFirestore.getInstance()
-    val purchases = (userData["purchasedClothes"] as? List<String>) ?: emptyList()
-    val purchasedClothes = remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
+    val myClothes = remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
 
-    // učitavanje kupovina
-    LaunchedEffect(purchases) {
-        val clothesList = mutableListOf<Map<String, Any>>()
-        purchases.forEach { clothId ->
-            try {
-                val doc = firestore.collection("clothes").document(clothId).get().await()
-                if (doc.exists()) {
-                    clothesList.add(doc.data!!)
-                }
-            } catch (_: Exception) {}
-        }
-        purchasedClothes.value = clothesList
+    // učitavanje odeće koje je korisnik dodao
+    LaunchedEffect(userId) {
+        try {
+            val snapshot = firestore.collection("clothes")
+                .whereEqualTo("authorId", userId)
+                .get()
+                .await()
+
+            myClothes.value = snapshot.documents.mapNotNull { it.data }
+        } catch (_: Exception) {}
     }
 
     Column(
@@ -189,27 +186,27 @@ fun PurchasesSection(userData: Map<String, Any>) {
             .padding(horizontal = 16.dp)
     ) {
         Text(
-            text = "Moje kupovine",
+            text = "Moji proizvodi",
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
             color = MaterialTheme.colorScheme.onBackground
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        if (purchasedClothes.value.isEmpty()) {
+        if (myClothes.value.isEmpty()) {
             Text(
-                text = "Još nema kupljene odeće",
+                text = "Još niste dodali proizvode",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onBackground
             )
         } else {
-            purchasedClothes.value.forEach { cloth ->
+            myClothes.value.forEach { cloth ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 6.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (cloth["status"] == "Prodato") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+                        containerColor = MaterialTheme.colorScheme.surface
                     ),
                     shape = RoundedCornerShape(12.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -249,11 +246,7 @@ fun PurchasesSection(userData: Map<String, Any>) {
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onBackground
                             )
-                            Text(
-                                text = "Veličina: ${cloth["size"] ?: "N/A"}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
+
                             Text(
                                 text = "Cena: ${cloth["price"] ?: "N/A"}",
                                 style = MaterialTheme.typography.bodyMedium,
@@ -266,5 +259,6 @@ fun PurchasesSection(userData: Map<String, Any>) {
         }
     }
 }
+
 
 

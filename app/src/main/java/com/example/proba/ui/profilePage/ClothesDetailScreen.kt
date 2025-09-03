@@ -87,7 +87,7 @@ fun ClothesDetailScreen(navController: NavController, clothId: String) {
                 val data = doc.data!!
                 clothData = data
                 type = data["type"]?.toString() ?: ""
-               // size = data["size"]?.toString() ?: ""
+                // size = data["size"]?.toString() ?: ""
                 storeName = data["storeName"]?.toString() ?: ""
                 price = data["price"]?.toString() ?: ""
                 description = data["description"]?.toString() ?: ""
@@ -310,12 +310,12 @@ fun ClothesDetailScreen(navController: NavController, clothId: String) {
                 }
 
 
-                item {
-                    Button(onClick = { handleObisaoSam() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) {
-                        Text("Obišao/la sam", color = Color.White)
-                    }
-                    Spacer(Modifier.height(16.dp))
-                }
+              //  item {
+               //     Button(onClick = { handleObisaoSam() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)) {
+               //         Text("Obišao/la sam", color = Color.White)
+               //     }
+               //     Spacer(Modifier.height(16.dp))
+               // }
 
 
                 item {

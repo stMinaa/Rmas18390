@@ -64,6 +64,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 import androidx.compose.runtime.mutableStateMapOf
 import kotlinx.coroutines.tasks.await
+import java.util.Date
 
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
@@ -458,6 +459,14 @@ fun HomeScreen(navController: NavController) {
                                 title = description,
                                 icon = markerIcon,
                                 onClick = {
+                                    val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return@Marker true
+                                    val db = FirebaseFirestore.getInstance()
+                                    val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(
+                                        Date()
+                                    )
+                                    val visitDoc = db.collection("clothes").document(id)
+                                        .collection("visits").document(userId)
+
                                     val distance = FloatArray(1)
                                     android.location.Location.distanceBetween(
                                         userLocation.latitude, userLocation.longitude,
@@ -465,15 +474,23 @@ fun HomeScreen(navController: NavController) {
                                         distance
                                     )
 
-                                    if (userId != null && distance[0] <= 20f) {
-                                        PointsManager.addPoints(userId, 1)
-                                        Toast.makeText(context, "Dobili ste poen +1.", Toast.LENGTH_SHORT).show()
-                                    } else if (distance[0] > 20f) {
-                                        Toast.makeText(
-                                            context,
-                                            "Morate biti bliže markeru da biste dobili poen",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+                                    if (distance[0] > 20f) {
+                                        Toast.makeText(context, "Morate biti bliže markeru da biste dobili poen", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        // Provera da li je već obišao/la danas
+                                        visitDoc.get().addOnSuccessListener { doc ->
+                                            val lastVisit = doc.getString("date")
+                                            if (lastVisit == today) {
+                                                Toast.makeText(context, "Već ste danas obišli ovaj marker", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                // Dodavanje ili ažuriranje posete
+                                                visitDoc.set(mapOf("date" to today))
+                                                PointsManager.addPoints(userId, 1)
+                                                Toast.makeText(context, "Dobili ste poen +1.", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }.addOnFailureListener {
+                                            Toast.makeText(context, "Greška pri dobijanju podataka o poseti", Toast.LENGTH_SHORT).show()
+                                        }
                                     }
 
                                     navController.navigate("ClothesDetail/$id")
